@@ -23,7 +23,7 @@ import org.joda.time.Duration;
 import java.io.IOException;
 import java.util.Iterator;
 
-public class EthereumStreamingAnalyticsMain {
+public class Main {
     public static void main(String[] args) {
         PipelineOptions options = PipelineOptionsFactory.create();
         Pipeline pipeline = Pipeline.create(options);
