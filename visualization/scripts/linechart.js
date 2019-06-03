@@ -1,6 +1,6 @@
 define(function(){
     return function() {
-      var margin = {top: 20, right: 20, bottom: 20, left: 20},
+      var margin = {top: 20, right: 20, bottom: 20, left: 50},
           width = 600,
           height = 400,
           duration = 3000,
@@ -20,7 +20,7 @@ define(function(){
 
           var t = d3.transition().duration(duration).ease(d3.easeLinear),
               x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]),
-              y = d3.scaleLinear().rangeRound([height-margin.top-margin.bottom, 0]),
+              y = d3.scaleLog().rangeRound([height-margin.top-margin.bottom, 1]),
               z = d3.scaleOrdinal(color);
 
           var xMin = d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })});
@@ -58,7 +58,7 @@ define(function(){
 
           var legendEnter = gEnter.append("g")
             .attr("class", "legend")
-            .attr("transform", "translate(" + (width-margin.right-margin.left-200) + ",25)");
+            .attr("transform", "translate(" + (width-margin.right-margin.left-200) + ",100)");
           legendEnter.append("rect")
             .attr("width", 50)
             .attr("height", 75)

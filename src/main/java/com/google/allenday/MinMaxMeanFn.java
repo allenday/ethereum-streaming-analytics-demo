@@ -45,8 +45,18 @@ public class MinMaxMeanFn extends Combine.CombineFn<Long, MinMaxMeanFn.Accum, St
         for (Accum accum : accums) {
             merged.sum += accum.sum;
             merged.count += accum.count;
-            merged.min = Math.min(merged.min, accum.min);
-            merged.max = Math.max(merged.max, accum.max);
+
+            if (merged.min == null) {
+                merged.min = accum.min;
+            } else {
+                merged.min = Math.min(merged.min, accum.min);
+            }
+
+            if (merged.max == null) {
+                merged.max = accum.max;
+            } else {
+                merged.max = Math.max(merged.max, accum.max);
+            }
         }
         return merged;
     }

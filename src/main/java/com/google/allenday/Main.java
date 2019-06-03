@@ -2,6 +2,7 @@ package com.google.allenday;
 
 import com.google.allenday.firestore.WriteDataToFirestoreDbFn;
 import io.blockchainetl.ethereum.domain.Transaction;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -12,8 +13,6 @@ import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.joda.time.Duration;
 
-import javax.xml.crypto.Data;
-
 public class Main {
 
     // TODO: extract to arguments
@@ -21,7 +20,7 @@ public class Main {
     private static final int SLIDING_WINDOW_PERIOD = 30;
 
     public static void main(String[] args) {
-        PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
+        PipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(DataflowPipelineOptions.class);
         Pipeline pipeline = Pipeline.create(options);
         pipeline.apply("Reading PubSub", PubsubIO
                 .readMessagesWithAttributes()
