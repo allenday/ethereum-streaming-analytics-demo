@@ -1,4 +1,4 @@
-package com.google.allenday;
+package com.google.allenday.calculation;
 
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
@@ -8,11 +8,14 @@ public class Stats {
     Stats() {
     }
 
-    Stats(long min, long max, double mean) {
+    Stats(long count, long min, long max, double mean) {
+        this.count = count;
         this.min = min;
         this.max = max;
         this.mean = mean;
     }
+
+    private long count;
 
     private long min;
 
@@ -42,5 +45,13 @@ public class Stats {
 
     public void setMean(long mean) {
         this.mean = mean;
+    }
+
+    public long getCount() {
+        return count;
+    }
+
+    public void setCount(long count) {
+        this.count = count;
     }
 }

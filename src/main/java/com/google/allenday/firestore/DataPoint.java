@@ -1,10 +1,8 @@
-package com.google.allenday;
+package com.google.allenday.firestore;
 
+import com.google.allenday.calculation.Stats;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
-import org.joda.time.Instant;
-
-import java.io.Serializable;
 
 @DefaultCoder(AvroCoder.class)
 public class DataPoint {

@@ -1,9 +1,7 @@
 package com.google.allenday.firestore;
 
-import com.google.allenday.DataPoint;
 import com.google.cloud.firestore.WriteResult;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +18,11 @@ public class WriteDataToFirestoreDbFn extends DoFn<DataPoint, String> {
 
     private FirestoreService firebaseDatastoreService;
     private String projectId;
+    private String collection;
 
-    public WriteDataToFirestoreDbFn(String projectId) {
+    public WriteDataToFirestoreDbFn(String projectId, String collection) {
         this.projectId = projectId;
+        this.collection = collection;
     }
 
     @Setup
@@ -42,7 +42,7 @@ public class WriteDataToFirestoreDbFn extends DoFn<DataPoint, String> {
 
         DataPoint data = c.element();
         Future<WriteResult> result = firebaseDatastoreService.writeObjectToFirestoreCollection(
-                "gas_statistic",
+                collection,
                 String.format("t_%d", data.getTimestamp()),
                 data
         );

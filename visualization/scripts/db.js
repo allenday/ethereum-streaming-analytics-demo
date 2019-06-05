@@ -1,13 +1,13 @@
 define(function () {
   // Initialize Firebase
-  var config = {
-    apiKey: "AIzaSyCRuxL33WHgy3E5zeBMke_8rlhCIrZhl4A",
-    authDomain: "ethereum-streaming-dev.firebaseapp.com",
-    databaseURL: "https://ethereum-streaming-dev.firebaseio.com",
-    projectId: "ethereum-streaming-dev",
-    storageBucket: "",
-    messagingSenderId: "249269731739",
-    appId: "1:249269731739:web:97dd7bfaa4991d5f"
+  const config = {
+    apiKey: "<Isert your Firebase API key here>",
+    authDomain: "crypto-etl-ethereum-dev.firebaseapp.com",
+    databaseURL: "https://crypto-etl-ethereum-dev.firebaseio.com",
+    projectId: "crypto-etl-ethereum-dev",
+    storageBucket: "crypto-etl-ethereum-dev.appspot.com",
+    messagingSenderId: "869804627112",
+    appId: "1:869804627112:web:49ab7d0d30c45dee"
   };
 
   firebase.initializeApp(config);

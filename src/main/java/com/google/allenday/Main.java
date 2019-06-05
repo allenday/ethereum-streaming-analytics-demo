@@ -1,6 +1,10 @@
 package com.google.allenday;
 
+import com.google.allenday.calculation.MinMaxMeanFn;
+import com.google.allenday.calculation.Stats;
+import com.google.allenday.firestore.DataPoint;
 import com.google.allenday.firestore.WriteDataToFirestoreDbFn;
+import com.google.allenday.input.DeserializeTransaction;
 import io.blockchainetl.ethereum.domain.Transaction;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -15,12 +19,12 @@ import org.joda.time.Duration;
 
 public class Main {
 
-    // TODO: extract to arguments
+    // TODO: extract to command arguments
     private static final int SLIDING_WINDOW_SIZE = 120;
-    private static final int SLIDING_WINDOW_PERIOD = 30;
+    private static final int SLIDING_WINDOW_PERIOD = 15;
 
     public static void main(String[] args) {
-        PipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(DataflowPipelineOptions.class);
+        DataflowPipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(DataflowPipelineOptions.class);
         Pipeline pipeline = Pipeline.create(options);
         pipeline.apply("Reading PubSub", PubsubIO
                 .readMessagesWithAttributes()
@@ -32,7 +36,7 @@ public class Main {
                             @ProcessElement
                             public void processElement(ProcessContext c) {
                                 Transaction tx = c.element();
-                                c.output(tx.getReceiptCumulativeGasUsed());
+                                c.output(tx.getGasPrice());
                             }
                         }))
                 .apply(Window.<Long>into(
@@ -43,8 +47,8 @@ public class Main {
                                         .plusDelayOf(Duration.standardSeconds(30)))
                         .withAllowedLateness(Duration.standardSeconds(30))
                         .discardingFiredPanes())
-                .apply(Combine.globally(new MinMaxMeanFn()).withoutDefaults())
-                .apply(ParDo.of(new DoFn<Stats, DataPoint>() {
+                .apply("Calculate statistic", Combine.globally(new MinMaxMeanFn()).withoutDefaults())
+                .apply("Prepare data points", ParDo.of(new DoFn<Stats, DataPoint>() {
                             @ProcessElement
                             public void processElement(ProcessContext c) {
                                 Stats stats = c.element();
@@ -60,7 +64,9 @@ public class Main {
                                 c.output(dataPoint);
                             }
                 }))
-        .apply(ParDo.of(new WriteDataToFirestoreDbFn("ethereum-streaming-dev")))
+        .apply("Write to FireStore", ParDo.of(
+                new WriteDataToFirestoreDbFn(options.getProject(), "demo_gas_price")
+        ))
                         ;
         pipeline.run();
     }

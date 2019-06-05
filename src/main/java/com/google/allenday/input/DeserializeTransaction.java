@@ -1,4 +1,4 @@
-package com.google.allenday;
+package com.google.allenday.input;
 
 import io.blockchainetl.ethereum.domain.Transaction;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;

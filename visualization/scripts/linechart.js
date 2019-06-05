@@ -58,7 +58,7 @@ define(function(){
 
           var legendEnter = gEnter.append("g")
             .attr("class", "legend")
-            .attr("transform", "translate(" + (width-margin.right-margin.left-200) + ",100)");
+            .attr("transform", "translate(" + (width-margin.right-margin.left-40) + ",0)");
           legendEnter.append("rect")
             .attr("width", 50)
             .attr("height", 75)
@@ -103,7 +103,7 @@ define(function(){
           g.selectAll("g .legend text")
             .data(data)
             .text(function(d) {
-              return d.label.toUpperCase() + ": " + d.values[d.values.length-1].value;
+              return d.label.toUpperCase();
             });
 
           // For transitions https://bl.ocks.org/mbostock/1642874

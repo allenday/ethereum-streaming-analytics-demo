@@ -4,10 +4,6 @@ require(['db', 'linechart'], function(db, linechart) {
     var duration = 500;
     var chart = linechart();
 
-    function randomNumberBounds(min, max) {
-      return Math.floor(Math.random() * max) + min;
-    }
-
     function updateData(doc) {
       var lineData = {
         time: doc.timestamp,
@@ -31,14 +27,12 @@ require(['db', 'linechart'], function(db, linechart) {
       d3.select("#chart").call(chart);
     }
 
-    db.collection("gas_statistic").orderBy("timestamp", "desc").limit(30)
+    db.collection("demo_gas_price").orderBy("timestamp", "desc").limit(30)
         .onSnapshot(function(querySnapshot) {
             lineArr = []
             querySnapshot.forEach(function(doc) {
-                console.log(doc.data());
                 updateData(doc.data());
             });
-            console.log('updated');
     });
 
 
