@@ -87,7 +87,7 @@ require(['db'], function (db) {
           var source = data.from.replace("_hw", "").replace("_uw", "");
           var target = data.to.replace("_hw", "").replace("_uw", "");
 
-          if (source != target) {
+          if (source != target && source != 'unknown' && target != 'unknown') {
             // create or update links
             link = findLink(graph.links, source, target);
             if (!link) {
