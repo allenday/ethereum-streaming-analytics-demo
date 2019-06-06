@@ -53,7 +53,7 @@ require(['db'], function (db) {
     .force("link",
       d3.forceLink()
         .id(function (d) { return d.id; })
-        .strength(0.08)
+        .strength(0.8)
         .distance(function (d) {
           return 300/(1+d.value);
         })
