@@ -13,7 +13,7 @@ require(['db'], function (db) {
     .selectAll("line")
     .append("line")
     .attr("stroke-width", function (d) {
-      return 1 * d.value;
+      return 10 * d.value;
     });
 
   node = svg.append("g")
@@ -53,11 +53,10 @@ require(['db'], function (db) {
     .force("link",
       d3.forceLink()
         .id(function (d) { return d.id; })
-        .distance(function (d) {
-          return 300;
-          return Math.log(d.value);
-        })
         .strength(0.08)
+        .distance(function (d) {
+          return 300/(1+d.value);
+        })
     )
     .force("charge", d3.forceManyBody())
     .force("center", d3.forceCenter(width / 2, height / 2))
@@ -92,7 +91,7 @@ require(['db'], function (db) {
             // create or update links
             link = findLink(graph.links, source, target);
             if (!link) {
-              link = { source: source, target: target, value: 1 + amount };
+              link = { source: source, target: target, value: 1/(1 + amount) };
               graph.links.push(link);
             } else {
               link.value = 1 + amount;
@@ -134,7 +133,7 @@ require(['db'], function (db) {
         link = link.enter()
           .append("line")
           .attr("stroke-width", function (d) {
-            return 1 * d.value;
+            return 2 * d.value;
           })
           .merge(link);
 
