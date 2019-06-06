@@ -1,0 +1,19 @@
+.links line {
+    stroke: #B64A2A;
+    stroke-opacity: 0.4;
+  }
+  
+  .nodes circle {
+    stroke: #fff;
+    stroke-width: 1.5px;
+    fill: #B64A2A;
+  }
+  
+  text {
+    font-family: sans-serif;
+    font-size: 10px;
+  }
+  
+  svg {
+    background-color: #fffafa;
+  }
