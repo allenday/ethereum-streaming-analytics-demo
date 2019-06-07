@@ -1,11 +1,39 @@
 require(['db'], function (db) {
+ 
   var width = 1000;
   var height = 1000;
   var svg = d3.select("svg")
     .style("width", width)
-    .style("height", height)
-    //  .style("background-color","#FFFAFA");
-    ;
+    .style("height", height),
+  defs = svg.selectAll('defs').data([1]).enter().append('defs');
+  
+  defs
+    .append('marker')
+      .attr('id', 'end-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 6)
+      .attr('markerWidth', 3)
+      .attr('markerHeight', 3)
+      .attr('orient', 'auto')
+      .append('svg:path')
+        .style("opacity", 0.9)
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#B64A2A');
+
+  defs
+    .append('marker')
+      .attr('id', 'start-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 4)
+      .attr('markerWidth', 3)
+      .attr('markerHeight', 3)
+      .attr('orient', 'auto')
+      .append('svg:path')
+        .style("opacity", 0.9)
+        .attr('d', 'M10,-5L0,0L10,5')
+        .attr('fill', '#B64A2A');
+
+
   var link, node, 
     links = svg.append("g")
       .attr("class", "links"),
@@ -14,15 +42,35 @@ require(['db'], function (db) {
     
 
   function ticked() {
-    link
-      .attr("x1", function (d) { return d.source.x; })
-      .attr("y1", function (d) { return d.source.y; })
-      .attr("x2", function (d) { return d.target.x; })
-      .attr("y2", function (d) { return d.target.y; });
-    node
-      .attr("transform", function (d) {
-        return "translate(" + d.x + "," + d.y + ")";
-      });
+
+    link.attr('d', function(d) {
+      var rB1 = d.source.r,
+        rB2 = d.target.r,
+        rA1 = rB1,
+        rA2 = rB2,
+      
+        deltaX = d.target.x - d.source.x,
+        deltaY = d.target.y - d.source.y,
+        alfa = Math.atan( deltaX / deltaY ),          
+        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY) ,
+        normX = deltaX / dist,
+        normY = deltaY / dist,
+          
+        r1 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB1, 2) + Math.pow( Math.cos( alfa) / rA1, 2) ),        
+        r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
+            
+        sourcePadding = d.left ? r1 +1 : r1 +1,
+        targetPadding = d.right ? r2 +4 : r2 +4,
+          
+        sourceX = d.source.x + (sourcePadding * normX),
+        sourceY = d.source.y + (sourcePadding * normY),
+        targetX = d.target.x - (targetPadding * normX),
+        targetY = d.target.y - (targetPadding * normY);
+          
+      return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+    });
+
+      node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");    
   }
 
   var simulation = d3.forceSimulation()
@@ -35,7 +83,10 @@ require(['db'], function (db) {
         })
     )
     .force("charge", d3.forceManyBody())
-    .force("center", d3.forceCenter(width / 2, height / 2))
+   // .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collide",d3.forceCollide( d => d.r +10).strength(0.01).iterations(5))
+    .force("y", d3.forceY().y( height/2 ).strength(0.04))
+    .force("x", d3.forceX().x( width/2 ).strength(0.04))
    
 
   function findLink(links, source, target) {
@@ -52,13 +103,14 @@ require(['db'], function (db) {
     if (error) throw error;
     // add nodes collection
     graph.nodes = [];
-    uNodes = new Set();
+    var uNodes = new Set();
 
-    db.collection("demo3").doc('latest').collection('volume')
+    db.collection("demo3").doc('latest').collection('volume').limit(30)
       .onSnapshot(querySnapshot => {
         querySnapshot.docChanges().forEach(change => {
           var link;
           var data = change.doc.data();
+       //   console.log(data)
           var amount = data["amount"] / 10e18;
           var source = data.from.replace("_hw", "").replace("_uw", "");
           var target = data.to.replace("_hw", "").replace("_uw", "");
@@ -76,16 +128,20 @@ require(['db'], function (db) {
             // create missing nodes
             if (!uNodes.has(source)) {
               uNodes.add(source);
-              graph.nodes.push({ id: source, group: 1 })
+              graph.nodes.push({ id: source, group: 1, value : -amount })
+            }else{
+              uNodes.has(source).value -= amount;
             }
             if (!uNodes.has(target)) {
               uNodes.add(target);
-              graph.nodes.push({ id: target, group: 1 })
+              graph.nodes.push({ id: target, group: 1, value : +amount })
+            }else{
+              uNodes.has(source).value += amount;
             }
           }
         });
 
-        console.log(graph);
+       // console.log(graph);
         // Update simulation
         // Apply the general update pattern to the nodes.
         node = nodes.selectAll('.node').data(graph.nodes, d => d.id);
@@ -96,15 +152,16 @@ require(['db'], function (db) {
       
           .each(function(d) {
               var el = d3.select(this);
+
+                d.x = width/2, d.y = height/2;
                 
                 el.append('title')
-                  .text(d => d.id)
+                  
 
                 el.append("circle")
-                  .attr("r", 8)
+                  .attr("r", d.r)
 
                 el.append('text')
-                  .attr('x', 8)
                   .attr('y', 3)
                   .text(d => d.id);
 
@@ -114,18 +171,27 @@ require(['db'], function (db) {
               .on("drag", dragged)
               .on("end", dragended)
             )
-          .merge(node);
+          .merge(node)
+          .each(function(d) {
+            var el = d3.select(this);
+            d.r =  3*d.value + 8;
+            el.select('circle').attr("r",d.r);
+            el.select('text').attr("x",d.r  + 2);
+            el.select('title').text(d.id + ': ' + d.value);
+
+          }) 
+
             
             
         // Apply the general update pattern to the links.
         link = links.selectAll('.link').data(graph.links, d => d.source.id + "-" + d.target.id);
         link.exit().remove();
         link = link.enter()
-          .append("line")
-          .classed('link',true)
-          .attr("stroke-width", function (d) {
-            return 2 * d.value;
-          })
+          .append("path")
+            .classed('link',true)
+            .style('marker-end', function(d) { return 'url(#end-arrow)' })
+            .attr("stroke-width", d => 2 * d.value)
+            .attr('d',"M0,0")
           .merge(link);
 
         simulation
