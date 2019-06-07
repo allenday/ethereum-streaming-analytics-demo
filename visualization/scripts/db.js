@@ -1,7 +1,7 @@
 define(function () {
   // Initialize Firebase
   const config = {
-    apiKey: "<Isert your Firebase API key here>",
+    apiKey: "AIzaSyD5oDrXfleV1ht410VIM742N-epcA7BzLE",
     authDomain: "crypto-etl-ethereum-dev.firebaseapp.com",
     databaseURL: "https://crypto-etl-ethereum-dev.firebaseio.com",
     projectId: "crypto-etl-ethereum-dev",
@@ -12,10 +12,5 @@ define(function () {
 
   firebase.initializeApp(config);
 
-  const db = firebase.firestore();
-  db.settings({
-    timestampsInSnapshots: true
-  });
-
-  return db;
+  return firebase.firestore();
 });
