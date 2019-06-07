@@ -7,8 +7,9 @@
     stroke: #fff;
     stroke-width: 1.5px;
     fill: #B64A2A;
+    cursor: pointer;
   }
-  
+   
   text {
     font-family: sans-serif;
     font-size: 10px;
