@@ -6,36 +6,12 @@ require(['db'], function (db) {
     .style("height", height)
     //  .style("background-color","#FFFAFA");
     ;
-  var link, node, circles, labels;
-
-  link = svg.append("g")
-    .attr("class", "links")
-    .selectAll("line")
-    .append("line")
-    .attr("stroke-width", function (d) {
-      return 10 * d.value;
-    });
-
-  node = svg.append("g")
-    .attr("class", "nodes")
-    .selectAll("g")
-    .append("g");
-
-  circles = node.append("circle")
-    .attr("r", function (d) { return 5; })
-    .call(d3.drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended)
-    );
-
-  labels = node.append("text")
-    .attr('x', 6)
-    .attr('y', 3)
-    .text(function (d) { return d.id; });
-
-  node.append("title")
-    .text(function (d) { return d.id; });
+  var link, node, 
+    links = svg.append("g")
+      .attr("class", "links"),
+    nodes = svg.append("g")
+      .attr("class", "nodes")
+    
 
   function ticked() {
     link
@@ -60,7 +36,7 @@ require(['db'], function (db) {
     )
     .force("charge", d3.forceManyBody())
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .on("tick", ticked);
+   
 
   function findLink(links, source, target) {
     var i;
@@ -96,7 +72,7 @@ require(['db'], function (db) {
             } else {
               link.value = 1 + amount;
             }
-
+ 
             // create missing nodes
             if (!uNodes.has(source)) {
               uNodes.add(source);
@@ -112,36 +88,52 @@ require(['db'], function (db) {
         console.log(graph);
         // Update simulation
         // Apply the general update pattern to the nodes.
-        node = node.data(graph.nodes, function (d) { return d.id; });
+        node = nodes.selectAll('.node').data(graph.nodes, d => d.id);
         node.exit().remove();
-        nodeEnter = node.enter()
-          .append('text')
-          .attr('x', 6)
-          .attr('y', 3)
-          .text(function (d) { return d.id; });
+        node = node.enter()
+          .append('g')
+          .classed('node', true)
+      
+          .each(function(d) {
+              var el = d3.select(this);
+                
+                el.append('title')
+                  .text(d => d.id)
 
-        node
-          .append("circle")
-          .attr("r", 8);
+                el.append("circle")
+                  .attr("r", 8)
 
-        node = node.merge(nodeEnter);
+                el.append('text')
+                  .attr('x', 8)
+                  .attr('y', 3)
+                  .text(d => d.id);
 
+          })
+          .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended)
+            )
+          .merge(node);
+            
+            
         // Apply the general update pattern to the links.
-        link = link
-          .data(graph.links, function (d) { return d.source.id + "-" + d.target.id; });
+        link = links.selectAll('.link').data(graph.links, d => d.source.id + "-" + d.target.id);
         link.exit().remove();
         link = link.enter()
           .append("line")
+          .classed('link',true)
           .attr("stroke-width", function (d) {
             return 2 * d.value;
           })
           .merge(link);
 
         simulation
+        .on("tick", ticked)
           .nodes(graph.nodes)
-        simulation.force("link")
-          .links(graph.links);
-
+          .force("link")
+            .links(graph.links)
+          
         simulation.alpha(1).restart();
       });
   });
@@ -159,7 +151,7 @@ require(['db'], function (db) {
 
   function dragended(d) {
     if (!d3.event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
+    d.fx = d.x; // null
+    d.fy = d.y; // null
   }
 });
