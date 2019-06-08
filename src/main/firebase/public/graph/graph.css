@@ -1,11 +1,11 @@
-.links line {
+.links line,path {
     stroke: #B64A2A;
     stroke-opacity: 0.4;
   }
   
   .nodes circle {
     stroke: #fff;
-    stroke-width: 1.5px;
+    stroke-width: 0.5px;
     fill: #B64A2A;
     cursor: pointer;
   }
