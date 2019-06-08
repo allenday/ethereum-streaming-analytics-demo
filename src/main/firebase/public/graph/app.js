@@ -77,10 +77,12 @@ require(['db'], function (db) {
     .force("link",
       d3.forceLink()
         .id(function (d) { return d.id; })
-        .strength(0.8)
-        .distance(function (d) {
-          return 300/(1+d.value);
-        })
+        //.strength(0.8)
+        //.distance(function (d) {
+        //  return 300/(1+d.value);
+        //})
+        .strength(function (d) { return d.intra == 1 ?  1 : 0.1 })
+        .distance(function (d) { return d.intra == 1 ? 0.01 : 300/1+d.value })
     )
     .force("charge", d3.forceManyBody())
    // .force("center", d3.forceCenter(width / 2, height / 2))
@@ -112,17 +114,27 @@ require(['db'], function (db) {
           var data = change.doc.data();
        //   console.log(data)
           var amount = data["amount"] / 10e18;
-          var source = data.from.replace("_hw", "").replace("_uw", "");
-          var target = data.to.replace("_hw", "").replace("_uw", "");
 
-          if (source != target && source != 'unknown' && target != 'unknown') {
+          var source = data.from;
+          var target = data.to;
+          var source_exchange = data.from.replace("_hw", "").replace("_uw", "");
+          var target_exchange = data.to.replace("_hw", "").replace("_uw", "");
+
+          var value = 1 + amount;
+          var intra = 0;
+          if (source_exchange == target_exchange) {
+            value = 1;
+            intra = 1;
+          }
+
+          if (source != target) { //&& source != 'unknown' && target != 'unknown') {
             // create or update links
             link = findLink(graph.links, source, target);
             if (!link) {
-              link = { source: source, target: target, value: 1/(1 + amount) };
+              link = { source: source, target: target, intra: intra, value: 1/value };
               graph.links.push(link);
             } else {
-              link.value = 1 + amount;
+              link.value = value;
             }
  
             // create missing nodes
