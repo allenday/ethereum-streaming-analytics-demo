@@ -44,14 +44,21 @@ require(['db'], function (db) {
   function ticked() {
 
     link.attr('d', function(d) {
-      var rB1 = d.source.r,
+
+      var deltaX, deltaY,
+        rB1 = d.source.r,
         rB2 = d.target.r,
         rA1 = rB1,
-        rA2 = rB2,
-      
-        deltaX = d.target.x - d.source.x,
-        deltaY = d.target.y - d.source.y,
-        alfa = Math.atan( deltaX / deltaY ),          
+        rA2 = rB2;
+
+      if(d.source.x == d.target.x) {
+        deltaX = d.source.r + 2;
+        deltaY = d.source.r + 2;         
+      }else{ 
+        deltaX = d.target.x - d.source.x;
+        deltaY = d.target.y - d.source.y;       
+      }
+       var alfa = Math.atan( deltaX / deltaY ),          
         dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY) ,
         normX = deltaX / dist,
         normY = deltaY / dist,
@@ -59,15 +66,20 @@ require(['db'], function (db) {
         r1 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB1, 2) + Math.pow( Math.cos( alfa) / rA1, 2) ),        
         r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
             
-        sourcePadding = d.left ? r1 +1 : r1 +1,
-        targetPadding = d.right ? r2 +4 : r2 +4,
+        sourcePadding = r1 + 1,
+        targetPadding = r2 + 4,
           
         sourceX = d.source.x + (sourcePadding * normX),
         sourceY = d.source.y + (sourcePadding * normY),
         targetX = d.target.x - (targetPadding * normX),
         targetY = d.target.y - (targetPadding * normY);
-          
-      return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+        if(d.source.x == d.target.x) {
+          return `M ${sourceX} ${sourceY} 	
+            Q ${sourceX + 25} ${sourceY + 25} ${sourceX + 30} ${sourceY-3}
+            Q ${sourceX +30} ${sourceY - 50} ${sourceX } ${targetY}`;
+        }else{  
+          return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+        }  
     });
 
       node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");    
@@ -105,20 +117,23 @@ require(['db'], function (db) {
     if (error) throw error;
     // add nodes collection
     graph.nodes = [];
-    var uNodes = new Set();
+    var uNodes = {} ;//new Set();
+    
 
     db.collection("demo3").doc('latest').collection('volume').limit(30)
       .onSnapshot(querySnapshot => {
         querySnapshot.docChanges().forEach(change => {
-          var link;
+          var link, node;
           var data = change.doc.data();
-       //   console.log(data)
+       
           var amount = data["amount"] / 10e18;
 
           var source = data.from;
           var target = data.to;
           var source_exchange = data.from.replace("_hw", "").replace("_uw", "");
+          var source_type = data.from.match(/_(.+)|(unknown)/)[1];
           var target_exchange = data.to.replace("_hw", "").replace("_uw", "");
+          var target_type = data.to.match(/_(.+)|(unknown)/)[1];
 
           var value = 1 + amount;
           var intra = 0;
@@ -128,32 +143,31 @@ require(['db'], function (db) {
           }
 
           if (source != target) { //&& source != 'unknown' && target != 'unknown') {
-            // create or update links
-            link = findLink(graph.links, source, target);
+          
+            if (!uNodes[source_exchange]) {
+              uNodes[source_exchange] = { id: source_exchange, group: 1, values : { hw :0, uw :0} };
+            }              
+            uNodes[source_exchange].values[source_type] -= amount; 
+              
+            if (!uNodes[target_exchange]) {
+              uNodes[target_exchange] = { id: target_exchange, group: 1, values : { hw :0, uw :0} };
+            }              
+            uNodes[target_exchange].values[target_type] += amount; 
+
+          // create or update links
+            link = findLink(graph.links, source_exchange, target_exchange);
             if (!link) {
-              link = { source: source, target: target, intra: intra, value: 1/value };
-              graph.links.push(link);
+                //link = { source: source, target: target, intra: intra, value: 1/value };
+                link = { source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
+                graph.links.push(link);
             } else {
-              link.value = value;
-            }
- 
-            // create missing nodes
-            if (!uNodes.has(source)) {
-              uNodes.add(source);
-              graph.nodes.push({ id: source, group: 1, value : -amount })
-            }else{
-              uNodes.has(source).value -= amount;
-            }
-            if (!uNodes.has(target)) {
-              uNodes.add(target);
-              graph.nodes.push({ id: target, group: 1, value : +amount })
-            }else{
-              uNodes.has(source).value += amount;
+                link.value = value;
             }
           }
         });
 
-       // console.log(graph);
+        graph.nodes = d3.values(uNodes)
+
         // Update simulation
         // Apply the general update pattern to the nodes.
         node = nodes.selectAll('.node').data(graph.nodes, d => d.id);
@@ -165,17 +179,14 @@ require(['db'], function (db) {
           .each(function(d) {
               var el = d3.select(this);
 
-                d.x = width/2, d.y = height/2;
+                d.x = width/2, d.y = height/2; // node initial positions for simulation
                 
                 el.append('title')
                   
+                el.append("circle").classed('uw',true).attr('r',0)
+                el.append("circle").classed('hw',true).attr('r',0)                  
 
-                el.append("circle")
-                  .attr("r", d.r)
-
-                el.append('text')
-                  .attr('y', 3)
-                  .text(d => d.id);
+                el.append('text').attr('y', 3).text(d.id);
 
           })
           .call(d3.drag()
@@ -185,11 +196,22 @@ require(['db'], function (db) {
             )
           .merge(node)
           .each(function(d) {
+
             var el = d3.select(this);
-            d.r =  3*d.value + 8;
-            el.select('circle').attr("r",d.r);
-            el.select('text').attr("x",d.r  + 2);
-            el.select('title').text(d.id + ': ' + d.value);
+            
+            // calc node radius(es)
+            if(d.values.uw <=0 ) d.values.uw = 0.01;
+            if(d.values.hw <=0 ) d.values.hw = 0.01;
+
+            d.r_uw =  5 + 10 * Math.sqrt(d.values.uw/3.14) ;
+            d.r_hw =  5 + 10 * Math.sqrt(d.values.hw/3.14) ;
+            
+            d.r = Math.max(d.r_uw,d.r_hw);  // this is used later to calc node connections arrows ends positions
+
+            el.select('.uw').transition().duration(300).attr("r", d.r_uw);
+            el.select('.hw').transition().duration(300).attr("r", d.r_hw);
+            el.select('text').transition().duration(300).attr("x",d.r_uw  + 2);
+            el.select('title').text(d.id + ' ( hw: ' + d.values.hw + ', uw: ' + d.values.uw + ' )');
 
           }) 
 

@@ -1,12 +1,20 @@
-.links line,path {
+.links path {
     stroke: #B64A2A;
     stroke-opacity: 0.4;
+    fill: none;
   }
   
   .nodes circle {
     stroke: #fff;
     stroke-width: 0.5px;
     fill: #B64A2A;
+    cursor: pointer;
+  }
+
+  .nodes circle.hw {
+    stroke: #fff;
+    stroke-width: 0.5px;
+    fill: rgb(246, 175, 42);
     cursor: pointer;
   }
    
