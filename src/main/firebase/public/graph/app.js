@@ -34,7 +34,7 @@ require(['db'], function (db) {
         .attr('fill', '#B64A2A');
 
 
-  var link, node, 
+  var link, node, uLinks = {},
     links = svg.append("g")
       .attr("class", "links"),
     nodes = svg.append("g")
@@ -59,7 +59,7 @@ require(['db'], function (db) {
         deltaY = d.target.y - d.source.y;       
       }
        var alfa = Math.atan( deltaX / deltaY ),          
-        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY) ,
+        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
         normX = deltaX / dist,
         normY = deltaY / dist,
           
@@ -67,7 +67,7 @@ require(['db'], function (db) {
         r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
             
         sourcePadding = r1 + 1,
-        targetPadding = r2 + 4,
+        targetPadding = r2 + 5,
           
         sourceX = d.source.x + (sourcePadding * normX),
         sourceY = d.source.y + (sourcePadding * normY),
@@ -77,9 +77,20 @@ require(['db'], function (db) {
           return `M ${sourceX} ${sourceY} 	
             Q ${sourceX + 25} ${sourceY + 25} ${sourceX + 30} ${sourceY-3}
             Q ${sourceX +30} ${sourceY - 50} ${sourceX } ${targetY}`;
-        }else{  
-          return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
         }  
+
+        if(uLinks[ d.target.id + '-' + d.source.id]) { // if there is another link in reverse direction             
+            var side = d.source.id < d.target.id ? 1: -1, // link side shift (left/right)
+                center = { x: (d.source.x + d.target.x)/2 , y: (d.source.y + d.target.y)/2 },
+                angle =   side*alfa, //pos*Math.atan2(d.source.x - d.target.x,d.source.y - d.target.y),
+                shiftValue = {x: side*Math.cos(angle), y:  Math.sin(angle)};
+
+            return `M ${sourceX } ${sourceY } 	
+                Q ${center.x + 40*shiftValue.x} ${center.y - 40*shiftValue.y} ${targetX + 4*shiftValue.x } ${targetY - 4*shiftValue.y}`;
+        } 
+
+        return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+          
     });
 
       node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");    
@@ -117,7 +128,7 @@ require(['db'], function (db) {
     if (error) throw error;
     // add nodes collection
     graph.nodes = [];
-    var uNodes = {} ;//new Set();
+    var uNodes = {};
     
 
     db.collection("demo3").doc('latest').collection('volume').limit(30)
@@ -157,14 +168,15 @@ require(['db'], function (db) {
           // create or update links
             link = findLink(graph.links, source_exchange, target_exchange);
             if (!link) {
-                //link = { source: source, target: target, intra: intra, value: 1/value };
                 link = { source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
                 graph.links.push(link);
+                uLinks[source_exchange + '-' + target_exchange ] = link;
             } else {
                 link.value = value;
             }
           }
         });
+
 
         graph.nodes = d3.values(uNodes)
 
