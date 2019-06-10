@@ -107,9 +107,9 @@ require(['db'], function (db) {
         .strength(function (d) { return d.intra == 1 ?  1 : 0.1 })
         .distance(function (d) { return d.intra == 1 ? 0.01 : 300/1+d.value })
     )
-    .force("charge", d3.forceManyBody())
+    .force("charge", d3.forceManyBody().strength(-140).distanceMax(80).distanceMin(10))
    // .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide",d3.forceCollide( d => d.r +10).strength(0.01).iterations(5))
+    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(5))
     .force("y", d3.forceY().y( height/2 ).strength(0.04))
     .force("x", d3.forceX().x( width/2 ).strength(0.04))
    
@@ -134,7 +134,7 @@ require(['db'], function (db) {
     db.collection("demo3").doc('latest').collection('volume').limit(30)
       .onSnapshot(querySnapshot => {
         querySnapshot.docChanges().forEach(change => {
-          var link, node;
+          var link, node, key;
           var data = change.doc.data();
        
           var amount = data["amount"] / 10e18;
@@ -166,18 +166,17 @@ require(['db'], function (db) {
             uNodes[target_exchange].values[target_type] += amount; 
 
           // create or update links
-            link = findLink(graph.links, source_exchange, target_exchange);
-            if (!link) {
-                link = { source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
-                graph.links.push(link);
-                uLinks[source_exchange + '-' + target_exchange ] = link;
+            key = source_exchange + '-' + target_exchange;
+            if (!uLinks[key]) {
+                link = { id: source_exchange + '-' + target_exchange, source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
+                uLinks[key] = link;
             } else {
-                link.value = value;
+                uLinks[key].value = value;
             }
           }
         });
 
-
+        graph.links = d3.values(uLinks)
         graph.nodes = d3.values(uNodes)
 
         // Update simulation
@@ -227,25 +226,25 @@ require(['db'], function (db) {
 
           }) 
 
-            
+         
             
         // Apply the general update pattern to the links.
-        link = links.selectAll('.link').data(graph.links, d => d.source.id + "-" + d.target.id);
+        link = links.selectAll('.link').data(graph.links, d => d.id);
         link.exit().remove();
         link = link.enter()
           .append("path")
             .classed('link',true)
-            .style('marker-end', function(d) { return 'url(#end-arrow)' })
+            .attr('id', d => d.id)
+            .style('marker-end', 'url(#end-arrow)')
+          .merge(link)
             .attr("stroke-width", d => 2 * d.value)
-            .attr('d',"M0,0")
-          .merge(link);
 
         simulation
-        .on("tick", ticked)
+          .on("tick", ticked)
           .nodes(graph.nodes)
           .force("link")
             .links(graph.links)
-          
+
         simulation.alpha(1).restart();
       });
   });
