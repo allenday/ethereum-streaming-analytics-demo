@@ -61,13 +61,11 @@ require(['db'], function (db) {
        var alfa = Math.atan( deltaX / deltaY ),          
         dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
         normX = deltaX / dist,
-        normY = deltaY / dist,
-          
+        normY = deltaY / dist,s
         r1 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB1, 2) + Math.pow( Math.cos( alfa) / rA1, 2) ),        
         r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
-            
         sourcePadding = r1 + 1,
-        targetPadding = r2 + 5,
+        targetPadding = r2 + 5 - (d.value  < 2 ? 2 - d.value : 0),
           
         sourceX = d.source.x + (sourcePadding * normX),
         sourceY = d.source.y + (sourcePadding * normY),
@@ -221,7 +219,7 @@ require(['db'], function (db) {
 
             el.select('.uw').transition().duration(300).attr("r", d.r_uw);
             el.select('.hw').transition().duration(300).attr("r", d.r_hw);
-            el.select('text').transition().duration(300).attr("x",d.r_uw  + 2);
+            el.select('text').transition().duration(300).attr("x",d.r  + 2);
             el.select('title').text(d.id + ' ( hw: ' + d.values.hw + ', uw: ' + d.values.uw + ' )');
 
           }) 
