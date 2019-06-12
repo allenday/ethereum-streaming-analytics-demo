@@ -34,7 +34,7 @@ require(['db'], function (db) {
         .attr('fill', '#B64A2A');
 
 
-  var link, node, 
+  var link, node, uLinks = {},
     links = svg.append("g")
       .attr("class", "links"),
     nodes = svg.append("g")
@@ -59,15 +59,13 @@ require(['db'], function (db) {
         deltaY = d.target.y - d.source.y;       
       }
        var alfa = Math.atan( deltaX / deltaY ),          
-        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY) ,
+        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
         normX = deltaX / dist,
-        normY = deltaY / dist,
-          
+        normY = deltaY / dist,s
         r1 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB1, 2) + Math.pow( Math.cos( alfa) / rA1, 2) ),        
         r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
-            
         sourcePadding = r1 + 1,
-        targetPadding = r2 + 4,
+        targetPadding = r2 + 5 - (d.value  < 2 ? 2 - d.value : 0),
           
         sourceX = d.source.x + (sourcePadding * normX),
         sourceY = d.source.y + (sourcePadding * normY),
@@ -77,9 +75,20 @@ require(['db'], function (db) {
           return `M ${sourceX} ${sourceY} 	
             Q ${sourceX + 25} ${sourceY + 25} ${sourceX + 30} ${sourceY-3}
             Q ${sourceX +30} ${sourceY - 50} ${sourceX } ${targetY}`;
-        }else{  
-          return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
         }  
+
+        if(uLinks[ d.target.id + '-' + d.source.id]) { // if there is another link in reverse direction             
+            var side = d.source.id < d.target.id ? 1: -1, // link side shift (left/right)
+                center = { x: (d.source.x + d.target.x)/2 , y: (d.source.y + d.target.y)/2 },
+                angle =   side*alfa, //pos*Math.atan2(d.source.x - d.target.x,d.source.y - d.target.y),
+                shiftValue = {x: side*Math.cos(angle), y:  Math.sin(angle)};
+
+            return `M ${sourceX } ${sourceY } 	
+                Q ${center.x + 40*shiftValue.x} ${center.y - 40*shiftValue.y} ${targetX + 4*shiftValue.x } ${targetY - 4*shiftValue.y}`;
+        } 
+
+        return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+          
     });
 
       node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");    
@@ -96,9 +105,9 @@ require(['db'], function (db) {
         .strength(function (d) { return d.intra == 1 ?  1 : 0.1 })
         .distance(function (d) { return d.intra == 1 ? 0.01 : 300/1+d.value })
     )
-    .force("charge", d3.forceManyBody())
+    .force("charge", d3.forceManyBody().strength(-140).distanceMax(80).distanceMin(10))
    // .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide",d3.forceCollide( d => d.r +10).strength(0.01).iterations(5))
+    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(5))
     .force("y", d3.forceY().y( height/2 ).strength(0.04))
     .force("x", d3.forceX().x( width/2 ).strength(0.04))
    
@@ -117,13 +126,13 @@ require(['db'], function (db) {
     if (error) throw error;
     // add nodes collection
     graph.nodes = [];
-    var uNodes = {} ;//new Set();
+    var uNodes = {};
     
 
     db.collection("demo3").doc('latest').collection('volume').limit(30)
       .onSnapshot(querySnapshot => {
         querySnapshot.docChanges().forEach(change => {
-          var link, node;
+          var link, node, key;
           var data = change.doc.data();
        
           var amount = data["amount"] / 10e18;
@@ -155,17 +164,17 @@ require(['db'], function (db) {
             uNodes[target_exchange].values[target_type] += amount; 
 
           // create or update links
-            link = findLink(graph.links, source_exchange, target_exchange);
-            if (!link) {
-                //link = { source: source, target: target, intra: intra, value: 1/value };
-                link = { source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
-                graph.links.push(link);
+            key = source_exchange + '-' + target_exchange;
+            if (!uLinks[key]) {
+                link = { id: source_exchange + '-' + target_exchange, source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
+                uLinks[key] = link;
             } else {
-                link.value = value;
+                uLinks[key].value = value;
             }
           }
         });
 
+        graph.links = d3.values(uLinks)
         graph.nodes = d3.values(uNodes)
 
         // Update simulation
@@ -210,30 +219,30 @@ require(['db'], function (db) {
 
             el.select('.uw').transition().duration(300).attr("r", d.r_uw);
             el.select('.hw').transition().duration(300).attr("r", d.r_hw);
-            el.select('text').transition().duration(300).attr("x",d.r_uw  + 2);
+            el.select('text').transition().duration(300).attr("x",d.r  + 2);
             el.select('title').text(d.id + ' ( hw: ' + d.values.hw + ', uw: ' + d.values.uw + ' )');
 
           }) 
 
-            
+         
             
         // Apply the general update pattern to the links.
-        link = links.selectAll('.link').data(graph.links, d => d.source.id + "-" + d.target.id);
+        link = links.selectAll('.link').data(graph.links, d => d.id);
         link.exit().remove();
         link = link.enter()
           .append("path")
             .classed('link',true)
-            .style('marker-end', function(d) { return 'url(#end-arrow)' })
+            .attr('id', d => d.id)
+            .style('marker-end', 'url(#end-arrow)')
+          .merge(link)
             .attr("stroke-width", d => 2 * d.value)
-            .attr('d',"M0,0")
-          .merge(link);
 
         simulation
-        .on("tick", ticked)
+          .on("tick", ticked)
           .nodes(graph.nodes)
           .force("link")
             .links(graph.links)
-          
+
         simulation.alpha(1).restart();
       });
   });
