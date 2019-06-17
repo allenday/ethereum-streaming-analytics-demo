@@ -98,16 +98,19 @@ require(['db'], function (db) {
     .force("link",
       d3.forceLink()
         .id(function (d) { return d.id; })
-        //.strength(0.8)
-        //.distance(function (d) {
-        //  return 300/(1+d.value);
-        //})
-        .strength(function (d) { return d.intra == 1 ?  1 : 0.1 })
-        .distance(function (d) { return d.intra == 1 ? 0.01 : 300/1+d.value })
+        .strength(0.01)
+        .distance(function (d) {
+          return 300/(1+d.value);
+        })
+        //.strength(function (d) { return d.intra == 1 ?  1 : 0.1 })
+        //.distance(function (d) { return d.intra == 1 ? 0.01 : 300/1+d.value })
     )
-    .force("charge", d3.forceManyBody().strength(-140).distanceMax(80).distanceMin(10))
+    .force("charge", d3.forceManyBody().strength(-140)
+//      .distanceMax(80)
+      .distanceMin(10)
+    )
    // .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(5))
+    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(50))
     .force("y", d3.forceY().y( height/2 ).strength(0.04))
     .force("x", d3.forceX().x( width/2 ).strength(0.04))
    
