@@ -1,5 +1,6 @@
 .links path {
-    stroke: #B64A2A;
+    /* stroke: #B64A2A; */
+    stroke: #AAAAAA;
     stroke-opacity: 0.4;
     fill: none;
   }

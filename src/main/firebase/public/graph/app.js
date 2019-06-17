@@ -18,7 +18,7 @@ require(['db'], function (db) {
       .append('svg:path')
         .style("opacity", 0.9)
         .attr('d', 'M0,-5L10,0L0,5')
-        .attr('fill', '#B64A2A');
+        .attr('fill', '#AAAAAA'); //TODO move to CSS
 
   defs
     .append('marker')
@@ -31,7 +31,7 @@ require(['db'], function (db) {
       .append('svg:path')
         .style("opacity", 0.9)
         .attr('d', 'M10,-5L0,0L10,5')
-        .attr('fill', '#B64A2A');
+        .attr('fill', '#AAAAAA'); //TODO move to css
 
 
   var link, node, uLinks = {},
@@ -129,7 +129,7 @@ require(['db'], function (db) {
     var uNodes = {};
     
 
-    db.collection("demo3").doc('latest').collection('volume').limit(30)
+    db.collection("demo3").doc('latest').collection('volume')
       .onSnapshot(querySnapshot => {
         querySnapshot.docChanges().forEach(change => {
           var link, node, key;
