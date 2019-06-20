@@ -34,7 +34,7 @@ require(['db'], function (db) {
         .attr('fill', '#AAAAAA'); //TODO move to css
 
 
-  var link, node, uLinks = {},
+  var link, node, uLinks = {}, dLinks = {},
     links = svg.append("g")
       .attr("class", "links"),
     nodes = svg.append("g")
@@ -110,7 +110,7 @@ require(['db'], function (db) {
       .distanceMin(10)
     )
    // .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(50))
+    .force("collide",d3.forceCollide( d => d.r +20).strength(0.01).iterations(100))
     .force("y", d3.forceY().y( height/2 ).strength(0.04))
     .force("x", d3.forceX().x( width/2 ).strength(0.04))
    
@@ -147,7 +147,7 @@ require(['db'], function (db) {
           var target_exchange = data.to.replace("_hw", "").replace("_uw", "");
           var target_type = data.to.match(/_(.+)|(unknown)/)[1];
 
-          var value = 1 + amount;
+          var value = 0.001 + amount;
           var intra = 0;
           if (source_exchange == target_exchange) {
             value = 1;
@@ -159,25 +159,38 @@ require(['db'], function (db) {
             if (!uNodes[source_exchange]) {
               uNodes[source_exchange] = { id: source_exchange, group: 1, values : { hw :0, uw :0} };
             }              
-            uNodes[source_exchange].values[source_type] -= amount; 
+            uNodes[source_exchange].values[source_type] -= amount;
               
             if (!uNodes[target_exchange]) {
               uNodes[target_exchange] = { id: target_exchange, group: 1, values : { hw :0, uw :0} };
             }              
-            uNodes[target_exchange].values[target_type] += amount; 
+            uNodes[target_exchange].values[target_type] += amount;
 
           // create or update links
             key = source_exchange + '-' + target_exchange;
+            var displayValue = 1/value; //value >= 1 ? 1/value : 999;
             if (!uLinks[key]) {
-                link = { id: source_exchange + '-' + target_exchange, source: source_exchange, target: target_exchange, intra: intra, value: 1/value };
-                uLinks[key] = link;
+//console.log(key + " = " + value + " * " + displayValue);
+              link = { id: source_exchange + '-' + target_exchange, source: source_exchange, target: target_exchange, intra: intra, value: displayValue };
+              uLinks[key] = link;
             } else {
-                uLinks[key].value = value;
+              uLinks[key].value = displayValue;
             }
           }
         });
 
-        graph.links = d3.values(uLinks)
+        dLinks = {};
+        var dVals = [];
+        for (var k in uLinks) { dVals.push(uLinks[k]['value']); }
+        dVals.sort(function(a, b) {return a - b});
+        var dMax = dVals[100];
+        for (var k in uLinks) {
+          if (uLinks[k]['value'] <= dMax) {
+            dLinks[k] = uLinks[k];
+          }
+        }
+        graph.links = d3.values(dLinks)
+        //graph.links = d3.values(dLinks).filter(d => d.value <= 1)
         graph.nodes = d3.values(uNodes)
 
         // Update simulation
