@@ -4,121 +4,133 @@ define(function(){
           width = 600,
           height = 400,
           duration = 3000,
-          color = d3.schemeCategory10;
+          delay = 0,
+          timeStamp = +(new Date()),
+          xMaxPrev = 0,
+          xMaxMin,        
+          xShift,
+          data = [],
+          yDom = [],
+          legendPosXinit = 15,
+          legendPosYinit = 20,
+          lines,
+        //  xMin,xMax,
+
+          maxDate = false,
+
+        //  t = d3.transition().duration(duration).ease(d3.easeLinear),
+          x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]),
+          color = d3.scaleOrdinal(d3.schemeCategory10).domain(['max','mean','min']);
+
+
 
       function chart(selection) {
-        // Based on https://bl.ocks.org/mbostock/3884955
-        selection.each(function(data) {
-          data = ["min", "max", "mean"].map(function(c) {
+
+        var y = d3.scaleLog().rangeRound([height-margin.top-margin.bottom, 1]);
+         
+        selection.each(function(xdata) {
+
+          init(this);
+
+    
+          xdata.forEach( d => !data.some( dd => dd.time == d.time ) && data.push(d) )
+          data = data.sort( (a,b) =>  a.time - b.time );
+          
+          xMin = +data[0].time;
+          xMax = data.length > 1 ? +data[data.length-2].time : +data[data.length-1].time;
+          if(!xMaxPrev) xMaxPrev = xMax;
+          xShift = xMax - xMaxPrev; 
+          xMin += xShift;
+
+          xMaxPrev = xMax;
+ 
+      
+          x.domain([xMin,xMax]);
+
+    
+          if(xShift > 0) {
+            while(+data[0].time < xMin) { data.shift() ; }
+            console.log('shift=' + xShift)
+            lines.transition().duration(400).attr("transform", "translate(" + x(xMin - xShift) + ",0)")
+          }      
+
+          yDom = [
+            d3.min(data, d => +d.min),
+            d3.max(data, d => +d.max)
+          ];
+          y.domain(yDom)
+
+       
+          var lineData = [ "max", "mean", "min"].map(function(c,i) {
             return {
               label: c,
-              values: data.map(function(d) {
-                return {time: +d.time, value: d[c]};
+              labelPosY : legendPosYinit + i * 20,
+              color : color(c),
+              line : d3.line()
+                .curve(d3.curveBasis)
+                .x(d => x(+d.time))
+                .y(d => y(+d[c]))
+                .defined(d => d[c])
+                (data) 
+          } })
+
+           
+            d3.select('.axis--y').call(d3.axisLeft(y).ticks(10));
+            
+            lines = d3.select('#graph-lines').selectAll('path')
+              .data(lineData)
+
+            lines.enter()
+            .append('path')
+              .style("stroke", d => d.color)
+              .style("stroke-width", 1)
+              .style("fill", "none")
+              .attr('d', d => d.line)
+              .each(function(d) {
+                  d3.select(this.parentNode)
+                    .append('text')
+                    .text(d.label)
+                    .style('stroke',d.color)
+                    .attr('y',d.labelPosY)
+                    .attr('x',legendPosXinit)
               })
-            };
-          });
 
-          var t = d3.transition().duration(duration).ease(d3.easeLinear),
-              x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]),
-              y = d3.scaleLog().rangeRound([height-margin.top-margin.bottom, 1]),
-              z = d3.scaleOrdinal(color);
+             
+              .merge(lines)
+              .attr("d", d => d.line)
+              .call ( () => d3.select('.axis--x').call(d3.axisBottom(x).ticks(5)))
+      
+        });
+      }
 
-          var xMin = d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })});
-          var xMax = new Date(new Date(d3.max(data, function(c) {
-            return d3.max(c.values, function(d) { return d.time; })
-          })).getTime() - (duration*2));
 
-          x.domain([xMin, xMax]);
-          y.domain([
-            d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.value; })}),
-            d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.value; })})
-          ]);
-          z.domain(data.map(function(c) { return c.label; }));
+      function init(container) {
 
-          var line = d3.line()
-            .curve(d3.curveBasis)
-            .x(function(d) { return x(d.time); })
-            .y(function(d) { return y(d.value); });
+        var svg = d3.select(container).selectAll("svg").data([1]);
+        var g = svg.enter().append("svg")
+            .attr('width', width).attr('height', height)
+            .append("g");
 
-          var svg = d3.select(this).selectAll("svg").data([data]);
-          var gEnter = svg.enter().append("svg").append("g");
-          gEnter.append("g").attr("class", "axis x");
-          gEnter.append("g").attr("class", "axis y");
-          gEnter.append("defs").append("clipPath")
-              .attr("id", "clip")
+        g.append("defs").append("clipPath")
+            .attr("id", "clip")
             .append("rect")
               .attr("width", width-margin.left-margin.right)
+              .style("fill-opacity", 0.7)
               .attr("height", height-margin.top-margin.bottom);
-          gEnter.append("g")
-              .attr("class", "lines")
-              .attr("clip-path", "url(#clip)")
-            .selectAll(".data").data(data).enter()
-              .append("path")
-                .attr("class", "data");
+    
+        g.append("g")
+            .attr("class", "axis axis--x")
+            .attr("transform", "translate(" + [margin.left,height - margin.top -margin.bottom] + ")")
+           
+        g.append("g")
+            .attr("class", "axis axis--y")
+            .attr("transform", "translate(" + [margin.left,0] + ")")
+    
+        g.append("g")
+          .attr("transform", "translate(" + [margin.left,0] + ")")
+            .attr("clip-path", "url(#clip)")
+            .attr('id', 'graph-lines')
 
-          var legendEnter = gEnter.append("g")
-            .attr("class", "legend")
-            .attr("transform", "translate(" + (width-margin.right-margin.left-40) + ",0)");
-          legendEnter.append("rect")
-            .attr("width", 50)
-            .attr("height", 75)
-            .attr("fill", "#ffffff")
-            .attr("fill-opacity", 0.7);
-          legendEnter.selectAll("text")
-            .data(data).enter()
-            .append("text")
-              .attr("y", function(d, i) { return (i*20) + 25; })
-              .attr("x", 5)
-              .attr("fill", function(d) { return z(d.label); });
-
-          var svg = selection.select("svg");
-          svg.attr('width', width).attr('height', height);
-          var g = svg.select("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-          g.select("g.axis.x")
-            .attr("transform", "translate(0," + (height-margin.bottom-margin.top) + ")")
-            .transition(t)
-            .call(d3.axisBottom(x).ticks(5));
-          g.select("g.axis.y")
-            .transition(t)
-            .attr("class", "axis y")
-            .call(d3.axisLeft(y));
-
-          g.select("defs clipPath rect")
-            .transition(t)
-            .attr("width", width-margin.left-margin.right)
-            .attr("height", height-margin.top-margin.right);
-
-          g.selectAll("g path.data")
-            .data(data)
-            .style("stroke", function(d) { return z(d.label); })
-            .style("stroke-width", 1)
-            .style("fill", "none")
-            .transition()
-            .duration(duration)
-            .ease(d3.easeLinear)
-            .on("start", tick);
-
-          g.selectAll("g .legend text")
-            .data(data)
-            .text(function(d) {
-              return d.label.toUpperCase();
-            });
-
-          // For transitions https://bl.ocks.org/mbostock/1642874
-          function tick() {
-            d3.select(this)
-              .attr("d", function(d) { return line(d.values); })
-              .attr("transform", null);
-
-            var xMinLess = new Date(new Date(xMin).getTime() - duration);
-            d3.active(this)
-                .attr("transform", "translate(" + x(xMinLess) + ",0)")
-              .transition()
-                .on("start", tick);
-          }
-        });
       }
 
       chart.margin = function(_) {
