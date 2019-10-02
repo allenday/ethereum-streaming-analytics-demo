@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<style>
+
+
+
+.node {
+   stroke-width: 3;
+   cursor: pointer;
+}
+
+.node.normal {
+   stroke-width: 0; 
+}
+
+.node circle {
+  fill: #fff;
+  stroke: black;
+}
+
+.node text {
+  text-anchor: start;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  pointer-events: none;
+  font-size: 8px;
+}
+
+.link {
+  fill: none;
+  stroke-width: 2;
+}
+
+
+
+.path-text {
+  font-size: 22px;
+  fill: #aaa;
+  dominant-baseline: central;
+}
+
+#input_data {
+   font-size:11px;
+   text-align:center;
+}
+
+
+
+
+
+</style>
+
+<body>
+
+      <div id="layer1">
+            <span class="input-controls">Address : <input size=70 value="0x8ccbb234c1528d51fea21baab852054f186e1486" type="text" id="input_data"/></span>
+            <input id="dataload" type="button" value="Load"/></span>
+      </div>
+
+
+<script src="./d3.v4.min.js"></script>
+
+
+<script>
+
+
+
+ class bitcoinTree {
+
+      constructor(nodes) {
+
+         this.initGraph();
+
+         this.separation = 160;
+         this.sim = false;
+         this.depthMultiplicator = 240;
+         this.nodesHash = {};
+         this.Url = './export-0xc8b759860149542a98a3eb57c14aadf59d6d89b9.csv';   
+  
+
+         this.nodes = [];
+         this.links = [];
+         this.node = [];
+         this.link = [];
+         this.nextaddr = false;
+
+         this.nodeIndex = 1000, // initial node index
+         this.duration = 1000;
+         this.iteration = 0;
+         this.maxIterations = 20;
+         this.addresses = {};
+         this.currentDataIndex = 1;
+
+
+         this.timef = d3.timeFormat('%d %B %Y %H:%M UTC');
+           
+                     
+      }
+
+      initGraph() {
+         var that = this;
+
+         this.margin = { top: 20, right: 90, bottom: 30, left: 90};
+
+         var w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+         var h = window.innerHeight|| document.documentElement.clientHeight|| document.body.clientHeight;
+
+         this.width = w - this.margin.left - this.margin.right,
+         this.height = h - this.margin.top - this.margin.bottom;
+
+         this.svgWidthInit = this.width + this.margin.right + this.margin.left;
+         this.svgHeightInit = this.height + this.margin.top + this.margin.bottom;
+
+/*
+         function zoomer() {
+            that.base.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+         }
+  
+         var zoom = d3.behavior.zoom()
+                  .translate( [this.width/2,this.height/2 ] )
+                  .scaleExtent([0.5, 4])
+                  .on("zoom", zoomer);
+*/
+         this.svg = d3.select("body")
+            .append("svg")
+               .attr("width", this.svgWidthInit)
+               .attr("height", this.svgHeightInit)
+              // .attr('viewBox',`0 0 ${this.width} ${this.height}`)
+             // .call(zoom )
+              
+         this.base = this.svg
+               .append("g")
+               .attr("transform","translate("+ [this.width/2,this.height/2 ] + ")");  
+
+         this.defs = this.svg.selectAll('defs').data([1]).enter().append('defs');
+  
+         this.defs
+            .append('marker')
+            .attr('id', 'end-arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 6)
+            .attr('markerWidth', 3)
+            .attr('markerHeight', 3)
+            .attr('orient', 'auto')
+            .append('svg:path')
+               .style("opacity", 0.9)
+               .attr('d', 'M0,-5L10,0L0,5')
+               .attr('fill', 'gray');
+
+         this.defs
+            .append('marker')
+            .attr('id', 'start-arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 4)
+            .attr('markerWidth', 3)
+            .attr('markerHeight', 3)
+            .attr('orient', 'auto')
+            .append('svg:path')
+               .style("opacity", 0.9)
+               .attr('d', 'M10,-5L0,0L10,5')
+            .attr('fill', 'gray');
+      
+      }
+
+
+      // "Txhash","Blockno","UnixTimestamp","DateTime","From","To","ContractAddress",
+      // "Value_IN(ETH)","Value_OUT(ETH)","CurrentValue @ $205.88/Eth","TxnFee(ETH)","TxnFee(USD)",
+      // "Historical $Price/Eth","Status","ErrCode","PrivateNote"
+
+
+      initSim() {
+         this.sim = d3.forceSimulation()
+            .force("link",
+               d3.forceLink().id(d => d.id)
+            )
+           // .force("charge", d3.forceManyBody().strength(-140).distanceMax(80).distanceMin(10))
+             .force("center", d3.forceCenter(0, 0))
+         .force("collide",d3.forceCollide( d => d.r +20).strength(0.9).iterations(1))
+         .force("y", d3.forceY().y( 0 ).strength(0.1))
+         .force("x", d3.forceX().x( 0 ).strength(0.1))
+         .velocityDecay(0.3)
+
+ 
+      }
+
+      convLinksData(data) {
+
+         let links = [],
+            src = data[0] === undefined ? [data] : data;
+         for(var d of data) {
+            if(this.links.some(dd => dd.id == d.From + '_' + d.To)) continue;
+            let link = { 
+                        id: d.From + '_' + d.To,
+                        source : d.From,
+                        target: d.To,
+                        name: d.Blockno, 
+                        inAmount: d['Value_IN(ETH)'], 
+                        outAmount: d['Value_OUT(ETH)'], 
+                        size: Math.abs( d['Value_OUT(ETH)'] - d['Value_IN(ETH)']),
+                        color: d['Value_OUT(ETH)'] > d['Value_IN(ETH)'] ? 'green' : 'red',
+                        title : 'In: ' + d['Value_IN(ETH)'] + ', Out: ' + d['Value_OUT(ETH)'],
+                        value: 3
+
+                     }
+            links.push(link)         
+         }
+         return links;
+      }
+
+
+      linksToNodes(links) {
+         var nodes = [], node;
+         links.forEach( d => {
+            let source = d.source.id || d.source,
+               target = d.target.id || d.target;
+
+            if(this.nodesHash[source]) {
+               this.nodesHash[source].value += d.inAmount; 
+            }else{ 
+               node = { id: source, name: source, value: d.inAmount, size: 10 };
+               //node = { id: this.nodeIndex++, name: d.source, value: d.inAmount, size: 10 };
+               nodes.push(node);
+               this.nodesHash[source] = node;
+            }
+            if(this.nodesHash[target]) {
+               this.nodesHash[target].value += d.outAmount; 
+            }else{ 
+               node = { id: target, name: target, value: d.outAmount, size: 10 };
+               //node = { id: this.nodeIndex++, name: d.target, value: d.outAmount, size: 10 };
+               nodes.push(node);
+               this.nodesHash[target] = node;
+            }
+         })
+         return nodes;
+      }      
+
+      init( addr ) {
+
+         var that = this;
+
+         d3.csv(this.Url, (error, data) => {
+            this.data = data;
+            this.interval = d3.interval(this.updateGraph.bind(this), this.duration); 
+         })
+      }
+
+  
+      updateGraph() {
+    
+         let tx, newlinks = [],newnodes = [];
+         if(tx = this.data[this.currentDataIndex++]) {             
+            this.links = this.links.concat (this.convLinksData([tx]));
+         }else{
+            this.interval.stop();
+            console.log(this.iteration + ' iterations done...') 
+         }
+         newnodes = this.linksToNodes(this.links);
+         this.nodes = this.nodes.concat(newnodes);
+       
+         this.draw();
+
+         if(++this.iteration >= this.maxIterations) {
+            this.interval.stop();
+            console.log(this.iteration + ' iterations done...')
+         }
+      }
+
+      ticked() {
+
+         this.link.attr('d', d => {
+
+         var deltaX, deltaY,
+            rB1 = d.source.r,
+            rB2 = d.target.r,
+            rA1 = rB1,
+            rA2 = rB2;
+
+            if(d.source.x == d.target.x) {
+               deltaX = d.source.r + 2;
+               deltaY = d.source.r + 2;         
+            }else{ 
+                deltaX = d.target.x - d.source.x;
+               deltaY = d.target.y - d.source.y;       
+            }
+         var alfa = Math.atan( deltaX / deltaY ),          
+            dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
+            normX = deltaX / dist,
+            normY = deltaY / dist,
+            r1 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB1, 2) + Math.pow( Math.cos( alfa) / rA1, 2) ),        
+            r2 = 1 / Math.sqrt( Math.pow( Math.sin( alfa) / rB2, 2) + Math.pow( Math.cos( alfa) / rA2, 2) ),                
+            sourcePadding = r1 + 1,
+            targetPadding = r2 + 5 - (d.value  < 3 ? 3 - d.value : 0),
+      
+            sourceX = d.source.x + (sourcePadding * normX),
+            sourceY = d.source.y + (sourcePadding * normY),
+            targetX = d.target.x - (targetPadding * normX),
+            targetY = d.target.y - (targetPadding * normY);
+
+            return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
+        
+         
+      });
+
+      this.node.attr("transform", d => "translate(" + [d.x,d.y] + ")");    
+   }
+
+
+
+   draw() {
+
+
+      let that = this;
+
+   //   console.log(this.links);
+     // console.log(this.nodes);
+
+
+      function dragstarted(d) {
+         if (!d3.event.active) that.sim.alphaTarget(0.01).restart();
+         d.fx = d.x;
+         d.fy = d.y;
+      }
+
+      function dragged(d) {
+         d.fx = d3.event.x;
+         d.fy = d3.event.y;
+      }
+
+      function dragended(d) {
+         if (!d3.event.active) that.sim.alphaTarget(0);
+         d.fx = d.x; // null
+         d.fy = d.y; // null
+      }
+
+
+         if(!this.sim) this.initSim();
+
+
+         this.node = this.base.selectAll('.node').data(this.nodes);
+         
+         this.node.exit().remove();
+         this.node = this.node.enter()
+            .append('g')
+            .classed('node', true)
+            .on('click', function(d) {
+               that.nextaddr = d.id;
+               that.updateGraph();
+            })
+      
+            .each(function(d) {
+              var el = d3.select(this);
+
+                d.x = that.width/2, d.y = that.height/2; // node initial positions for simulation                
+                el.append('title')                  
+                el.append("circle").classed('r1',true).attr('r',0)
+                el.append("circle").classed('r2',true).attr('r',0)                  
+                el.append('text').text(d.id);
+                //console.log(d.id + ' added..');
+                //console.log(d.x,d.y)
+                that.addresses[d.id] = 1;
+          })
+          .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended)
+            )
+          .merge(this.node)
+          .each(function(d) {
+
+            var el = d3.select(this);
+            
+            d.r = d.size;
+            el.select('.r1').transition().duration(300).attr("r", d.r1 || 10);
+            el.select('.r2').transition().duration(300).attr("r", d.r2 || 5);
+            el.select('text').transition().duration(300).attr("x",d.r  + 2);
+            el.select('text').transition().duration(300).attr("y",d.r  + 2);
+            el.select('title').text('id: ' + d.id);
+
+          }) 
+
+         
+            
+        // Apply the general update pattern to the links.
+        this.link = this.base.selectAll('.link').data(this.links, d => d.id);
+        this.link.exit().remove();
+        this.link = this.link.enter()
+          .append("path")
+            .classed('link',true)
+            .style('stroke', d => d.color)
+            .attr('id', d => d.id)
+            .style('marker-end', 'url(#end-arrow)')
+          .merge(this.link)
+            .attr("stroke-width", d => 2 * d.value)
+
+         this.sim
+            .alpha(0.3)
+            .alphaTarget(0.1)
+            .alphaDecay(1)
+          
+            .on("tick", that.ticked.bind(that))
+            .nodes(this.nodes)
+             
+            .force("link")
+            .links(this.links)
+
+         this.sim.restart()
+                  
+   }   
+
+  
+
+}
+
+const tree = new bitcoinTree();
+
+d3.select("#dataload").on('click', () => {
+         var addr = d3.select("#input_data").property('value');
+         tree.init(addr);
+})
+
+
+</script>
+</body>
