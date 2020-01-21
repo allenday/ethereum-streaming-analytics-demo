@@ -28,7 +28,7 @@ public class Main {
         Pipeline pipeline = Pipeline.create(options);
         pipeline.apply("Reading PubSub", PubsubIO
                 .readMessagesWithAttributes()
-                .fromTopic("projects/crypto-etl-ethereum-prod/topics/crypto_ethereum.transactions")
+                .fromTopic("projects/ethereum-streaming-dev/topics/crypto_ethereum.transactions")
                         )
                 .apply("Deserialize JSON",  ParDo.of(new DeserializeTransaction()))
                 .apply("Get Gas Value",
