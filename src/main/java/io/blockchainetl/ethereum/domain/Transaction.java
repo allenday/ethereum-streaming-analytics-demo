@@ -1,11 +1,13 @@
 package io.blockchainetl.ethereum.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.allenday.input.DeserializeTimestamp;
 import com.google.common.base.Objects;
 import org.apache.avro.reflect.Nullable;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.math.BigInteger;
 
@@ -78,6 +80,7 @@ public class Transaction {
 
     @Nullable
     @JsonProperty("block_timestamp")
+    @JsonDeserialize(using = DeserializeTimestamp.class)
     private Long blockTimestamp;
 
     public Transaction() {}
