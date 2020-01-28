@@ -1,4 +1,4 @@
-package io.blockchainetl.ethereum.domain;
+package com.google.allenday.transaction;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -13,8 +13,7 @@ import java.math.BigInteger;
 
 @DefaultCoder(AvroCoder.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
-
-public class Transaction {
+public class EthereumTransaction {
 
     @Nullable
     private String type;
@@ -83,7 +82,7 @@ public class Transaction {
     @JsonDeserialize(using = DeserializeTimestamp.class)
     private Long blockTimestamp;
 
-    public Transaction() {}
+    public EthereumTransaction() {}
 
     public String getType() {
         return type;
@@ -237,7 +236,7 @@ public class Transaction {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        Transaction that = (Transaction) o;
+        EthereumTransaction that = (EthereumTransaction) o;
         return Objects.equal(type, that.type) &&
                 Objects.equal(hash, that.hash) &&
                 Objects.equal(nonce, that.nonce) &&

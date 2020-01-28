@@ -1,7 +1,7 @@
 package com.google.allenday.input;
 
 
-import io.blockchainetl.ethereum.domain.Transaction;
+import com.google.allenday.transaction.EthereumTransaction;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -23,7 +23,7 @@ class DeserializeTransactionTests {
     void deserialize() {
         PubsubMessage message = new PubsubMessage(getTransactionJson().getBytes(), Collections.emptyMap());
 
-        PCollection<Transaction> transactions = testPipeline
+        PCollection<EthereumTransaction> transactions = testPipeline
                 .apply(Create.of(message))
                 .apply("Deserialize JSON", ParDo.of(new DeserializeTransaction()));
 
@@ -57,8 +57,8 @@ class DeserializeTransactionTests {
                 "}";
     }
 
-    Transaction getTransaction() {
-        Transaction tx = new Transaction();
+    EthereumTransaction getTransaction() {
+        EthereumTransaction tx = new EthereumTransaction();
         tx.setHash("0x4ff37b5d95c8e5aac2a290c6e72fb8bdc2978d5e2121cbc576855bf940136ee7");
         tx.setNonce("1046");
         tx.setTransactionIndex(65L);
