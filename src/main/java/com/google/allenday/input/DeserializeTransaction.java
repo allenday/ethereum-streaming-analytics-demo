@@ -1,6 +1,6 @@
 package com.google.allenday.input;
 
-import io.blockchainetl.ethereum.domain.Transaction;
+import com.google.allenday.transaction.EthereumTransaction;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class DeserializeTransaction extends DoFn<PubsubMessage, Transaction> {
+public class DeserializeTransaction extends DoFn<PubsubMessage, EthereumTransaction> {
 
     private Logger LOG = LoggerFactory.getLogger(DeserializeTransaction.class);
 
@@ -23,7 +23,7 @@ public class DeserializeTransaction extends DoFn<PubsubMessage, Transaction> {
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
         try {
-            Transaction tx = mapper.readValue(jsonString, Transaction.class);
+            EthereumTransaction tx = mapper.readValue(jsonString, EthereumTransaction.class);
             c.output(tx);
         } catch (IOException e) {
             LOG.error("Error parsing message: " + e.getMessage());
